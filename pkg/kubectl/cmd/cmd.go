@@ -36,13 +36,17 @@ import (
 
 const (
 	bash_completion_func = `# call kubectl get $1,
-__kubectl_override_flag_list=(kubeconfig cluster user context namespace server)
+__kubectl_override_flag_list=(kubeconfig cluster user context namespace n server s)
 __kubectl_override_flags()
 {
     local ${__kubectl_override_flag_list[*]} two_word_of of
     for w in "${words[@]}"; do
         if [ -n "${two_word_of}" ]; then
-            eval "${two_word_of}=\"--${two_word_of}=\${w}\""
+            if [ "${#two_word_of}" -eq 1 ]; then
+                eval "${two_word_of}=\"-${two_word_of}=\${w}\""
+            else
+                eval "${two_word_of}=\"--${two_word_of}=\${w}\""
+            fi
             two_word_of=
             continue
         fi
@@ -52,6 +56,12 @@ __kubectl_override_flags()
                     eval "${of}=\"${w}\""
                     ;;
                 --${of})
+                    two_word_of="${of}"
+                    ;;
+                -${of}=*)
+                    eval "${of}=\"${w}\""
+                    ;;
+                -${of})
                     two_word_of="${of}"
                     ;;
             esac
