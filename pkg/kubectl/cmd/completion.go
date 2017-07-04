@@ -276,6 +276,7 @@ fi
 
 __kubectl_convert_bash_to_zsh() {
 	sed \
+	-e 's/declare -A flaghash/declare -gA flaghash/' \
 	-e 's/declare -F/whence -w/' \
 	-e 's/_get_comp_words_by_ref "\$@"/_get_comp_words_by_ref "\$*"/' \
 	-e 's/local \([a-zA-Z0-9_]*\)=/local \1; \1=/' \
