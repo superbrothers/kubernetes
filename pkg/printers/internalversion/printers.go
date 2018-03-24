@@ -70,6 +70,13 @@ const (
 	nodeLabelRole = "kubernetes.io/role"
 )
 
+var (
+	objectMetaColumnDefinitions = []metav1beta1.TableColumnDefinition{
+		{Name: "Name", Type: "string", Format: "name", Description: metav1.ObjectMeta{}.SwaggerDoc()["name"]},
+		{Name: "Age", Type: "string", Description: metav1.ObjectMeta{}.SwaggerDoc()["creationTimestamp"]},
+	}
+)
+
 // AddHandlers adds print handlers for default Kubernetes types dealing with internal versions.
 // TODO: handle errors from Handler
 func AddHandlers(h printers.PrintHandler) {
@@ -418,15 +425,19 @@ func AddHandlers(h printers.PrintHandler) {
 	h.TableHandler(controllerRevisionColumnDefinition, printControllerRevisionList)
 
 	AddDefaultHandlers(h)
+
+	roleColumnDefinition := objectMetaColumnDefinitions
+	h.TableHandler(roleColumnDefinition, printRole)
+	h.TableHandler(roleColumnDefinition, printRoleList)
+
+	clusterRoleColumnDefinition := objectMetaColumnDefinitions
+	h.TableHandler(clusterRoleColumnDefinition, printClusterRole)
+	h.TableHandler(clusterRoleColumnDefinition, printClusterRoleList)
+
 }
 
 // AddDefaultHandlers adds handlers that can work with most Kubernetes objects.
 func AddDefaultHandlers(h printers.PrintHandler) {
-	// types without defined columns
-	objectMetaColumnDefinitions := []metav1beta1.TableColumnDefinition{
-		{Name: "Name", Type: "string", Format: "name", Description: metav1.ObjectMeta{}.SwaggerDoc()["name"]},
-		{Name: "Age", Type: "string", Description: metav1.ObjectMeta{}.SwaggerDoc()["creationTimestamp"]},
-	}
 	h.DefaultTableHandler(objectMetaColumnDefinitions, printObjectMeta)
 }
 
@@ -1765,4 +1776,20 @@ func printControllerRevisionList(list *apps.ControllerRevisionList, options prin
 		rows = append(rows, r...)
 	}
 	return rows, nil
+}
+
+func printRole(obj *rbac.Role, options printers.PrintOptions) ([]metav1beta1.TableRow, error) {
+	return printObjectMeta(obj, options)
+}
+
+func printRoleList(list *rbac.RoleList, options printers.PrintOptions) ([]metav1beta1.TableRow, error) {
+	return printObjectMeta(list, options)
+}
+
+func printClusterRole(obj *rbac.ClusterRole, options printers.PrintOptions) ([]metav1beta1.TableRow, error) {
+	return printObjectMeta(obj, options)
+}
+
+func printClusterRoleList(list *rbac.ClusterRoleList, options printers.PrintOptions) ([]metav1beta1.TableRow, error) {
+	return printObjectMeta(list, options)
 }
