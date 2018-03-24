@@ -287,11 +287,15 @@ func ValidResourceTypeList(f ClientAccessFactory) string {
 // Retrieve a list of handled resources from printer as valid args
 // TODO: This function implementation should be replaced with a real implementation from the discovery service.
 func ValidArgList(f ClientAccessFactory) []string {
-	validArgs := []string{}
+	// "clusterrole" and "role" aren't included handled resources of human
+	// readable printer, but we want to handle them as valid args. So we
+	// define them as default valid args.
+	// https://github.com/kubernetes/kubectl/issues/357
+	validArgs := []string{"clusterrole", "role"}
 
 	humanReadablePrinter := printers.NewHumanReadablePrinter(nil, nil, printers.PrintOptions{})
 	printersinternal.AddHandlers(humanReadablePrinter)
-	validArgs = humanReadablePrinter.HandledResources()
+	validArgs = append(validArgs, humanReadablePrinter.HandledResources()...)
 
 	return validArgs
 }
