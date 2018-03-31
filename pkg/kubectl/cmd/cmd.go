@@ -106,7 +106,14 @@ __kubectl_parse_get()
 __kubectl_get_resource()
 {
     if [[ ${#nouns[@]} -eq 0 ]]; then
-        return 1
+        local kubectl_out
+        if kubectl_out=$(kubectl api-resources $(__kubectl_override_flags) --no-headers 2>/dev/null | awk '{print $1}'); then
+            COMPREPLY=( $( compgen -W "${kubectl_out[*]}" -- "$cur" ) )
+        fi
+        if [[ ${#COMPREPLY[@]} -eq 0 ]]; then
+            # TODO: To complete shortnames
+        fi
+        return 0
     fi
     __kubectl_parse_get "${nouns[${#nouns[@]} -1]}"
 }

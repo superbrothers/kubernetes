@@ -138,7 +138,6 @@ func NewGetOptions(out io.Writer, errOut io.Writer) *GetOptions {
 // retrieves one or more resources from a server.
 func NewCmdGet(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := NewGetOptions(out, errOut)
-	validArgs := cmdutil.ValidArgList(f)
 
 	cmd := &cobra.Command{
 		Use: "get [(-o|--output=)json|yaml|wide|custom-columns=...|custom-columns-file=...|go-template=...|go-template-file=...|jsonpath=...|jsonpath-file=...] (TYPE [NAME | -l label] | TYPE/NAME ...) [flags]",
@@ -152,8 +151,6 @@ func NewCmdGet(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Comman
 			cmdutil.CheckErr(options.Run(f, cmd, args))
 		},
 		SuggestFor: []string{"list", "ps"},
-		ValidArgs:  validArgs,
-		ArgAliases: kubectl.ResourceAliases(validArgs),
 	}
 
 	cmd.Flags().StringVar(&options.Raw, "raw", options.Raw, "Raw URI to request from the server.  Uses the transport specified by the kubeconfig file.")
