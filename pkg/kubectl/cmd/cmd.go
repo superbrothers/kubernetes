@@ -109,9 +109,15 @@ __kubectl_parse_get()
 __kubectl_get_resource()
 {
     if [[ ${#nouns[@]} -eq 0 ]]; then
-        local kubectl_out
-        if kubectl_out=$(kubectl api-resources $(__kubectl_override_flags) -o name --cached --request-timeout=5s --verbs=get 2>/dev/null); then
+        local kubectl_out flags
+        flags="$(__kubectl_override_flags) --cached --request-timeout=5s --verbs=get"
+        if kubectl_out=$(kubectl api-resources -o name $args 2>/dev/null); then
             COMPREPLY=( $( compgen -W "${kubectl_out[*]}" -- "$cur" ) )
+            if [[ ${#COMPREPLY[@]} -eq 0 ]]; then
+                if kubectl_out=$(kubectl api-resources -o shortname $flags 2>/dev/null); then
+                    COMPREPLY=( $( compgen -W "${kubectl_out[*]}" -- "$cur" ) )
+                fi
+            fi
             return 0
         fi
         return 1
