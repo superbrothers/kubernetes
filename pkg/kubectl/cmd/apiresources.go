@@ -102,7 +102,7 @@ func NewCmdApiResources(f cmdutil.Factory, ioStreams genericclioptions.IOStreams
 }
 
 func (o *ApiResourcesOptions) Validate(cmd *cobra.Command) error {
-	supportedOutputTypes := sets.NewString("", "wide", "name")
+	supportedOutputTypes := sets.NewString("", "wide", "name", "shortname")
 	if !supportedOutputTypes.Has(o.Output) {
 		return fmt.Errorf("--output %v is not available in kubectl api-resources", o.Output)
 	}
@@ -164,7 +164,7 @@ func (o *ApiResourcesOptions) RunApiResources(cmd *cobra.Command, f cmdutil.Fact
 		}
 	}
 
-	if o.NoHeaders == false && o.Output != "name" {
+	if o.NoHeaders == false && o.Output != "name" && o.Output != "shortname" {
 		if err = printContextHeaders(w, o.Output); err != nil {
 			return err
 		}
@@ -180,6 +180,16 @@ func (o *ApiResourcesOptions) RunApiResources(cmd *cobra.Command, f cmdutil.Fact
 			}
 			if _, err := fmt.Fprintf(w, "%s\n", name); err != nil {
 				return err
+			}
+		case "shortname":
+			shortNames := r.APIResource.ShortNames
+			for _, shortName := range shortNames {
+				if len(r.APIGroup) > 0 {
+					shortName += "." + r.APIGroup
+				}
+				if _, err := fmt.Fprintf(w, "%s\n", shortName); err != nil {
+					return err
+				}
 			}
 		case "wide":
 			if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%v\t%s\t%v\n",
