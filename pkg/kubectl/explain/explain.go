@@ -42,6 +42,11 @@ func splitDotNotation(model string) (string, []string) {
 	return dotModel[0], fieldsPath
 }
 
+func SplitFieldRequest(inField string) []string {
+	inField = strings.TrimSuffix(inField, ".")
+	return strings.Split(inField, ".")
+}
+
 // SplitAndParseResourceRequest separates the users input into a model and fields
 func SplitAndParseResourceRequest(inResource string, mapper meta.RESTMapper) (string, []string, error) {
 	inResource, fieldsPath := splitDotNotation(inResource)

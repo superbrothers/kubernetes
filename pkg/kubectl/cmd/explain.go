@@ -74,7 +74,7 @@ func NewCmdExplain(parent string, f cmdutil.Factory, streams genericclioptions.I
 	o := NewExplainOptions(parent, streams)
 
 	cmd := &cobra.Command{
-		Use: "explain RESOURCE",
+		Use: "explain RESOURCE FIELD",
 		DisableFlagsInUseLine: true,
 		Short:   i18n.T("Documentation of resources"),
 		Long:    explainLong + "\n\n" + cmdutil.SuggestApiResources(parent),
@@ -108,8 +108,8 @@ func (o *ExplainOptions) Validate(args []string) error {
 	if len(args) == 0 {
 		return fmt.Errorf("You must specify the type of resource to explain. %s\n", cmdutil.SuggestApiResources(o.CmdParent))
 	}
-	if len(args) > 1 {
-		return fmt.Errorf("We accept only this format: explain RESOURCE\n")
+	if len(args) > 2 {
+		return fmt.Errorf("We accept only this format: explain RESOURCE FIELD\n")
 	}
 
 	return nil
@@ -120,20 +120,13 @@ func (o *ExplainOptions) Run(args []string) error {
 	recursive := o.Recursive
 	apiVersionString := o.ApiVersion
 
-	// TODO: After we figured out the new syntax to separate group and resource, allow
-	// the users to use it in explain (kubectl explain <group><syntax><resource>).
-	// Refer to issue #16039 for why we do this. Refer to PR #15808 that used "/" syntax.
-	inModel, fieldsPath, err := explain.SplitAndParseResourceRequest(args[0], o.Mapper)
-	if err != nil {
-		return err
-	}
-
 	// TODO: We should deduce the group for a resource by discovering the supported resources at server.
-	fullySpecifiedGVR, groupResource := schema.ParseResourceArg(inModel)
+	fullySpecifiedGVR, groupResource := schema.ParseResourceArg(args[0])
 	gvk := schema.GroupVersionKind{}
 	if fullySpecifiedGVR != nil {
 		gvk, _ = o.Mapper.KindFor(*fullySpecifiedGVR)
 	}
+	var err error
 	if gvk.Empty() {
 		gvk, err = o.Mapper.KindFor(groupResource.WithVersion(""))
 		if err != nil {
@@ -152,6 +145,11 @@ func (o *ExplainOptions) Run(args []string) error {
 	schema := o.Schema.LookupResource(gvk)
 	if schema == nil {
 		return fmt.Errorf("Couldn't find resource for %q", gvk)
+	}
+
+	var fieldsPath []string
+	if len(args) == 2 {
+		fieldsPath = explain.SplitFieldRequest(args[1])
 	}
 
 	return explain.PrintModelDescription(fieldsPath, o.Out, schema, gvk, recursive)
