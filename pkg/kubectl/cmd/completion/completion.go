@@ -19,9 +19,13 @@ package completion
 import (
 	"bytes"
 	"io"
+	"io/ioutil"
+	"strings"
 
 	"github.com/spf13/cobra"
 
+	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"k8s.io/kubernetes/pkg/kubectl/cmd/plugin"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	"k8s.io/kubernetes/pkg/kubectl/util/i18n"
 	"k8s.io/kubernetes/pkg/kubectl/util/templates"
@@ -127,6 +131,7 @@ func RunCompletion(out io.Writer, boilerPlate string, cmd *cobra.Command, args [
 	if !found {
 		return cmdutil.UsageErrorf(cmd, "Unsupported shell type %q.", args[0])
 	}
+	addPluginCommands(cmd.Root())
 
 	return run(out, boilerPlate, cmd.Parent())
 }
@@ -311,4 +316,62 @@ _complete kubectl 2>/dev/null
 `
 	out.Write([]byte(zshTail))
 	return nil
+}
+
+// addPluginCommand adds plugin commands under the given command so that
+// completion includes them
+func addPluginCommands(kubectl *cobra.Command) {
+	output := &bytes.Buffer{}
+	streams := genericclioptions.IOStreams{
+		In:     &bytes.Buffer{},
+		Out:    output,
+		ErrOut: ioutil.Discard,
+	}
+
+	o := &plugin.PluginListOptions{
+		IOStreams: streams,
+		NameOnly:  true,
+	}
+	o.Complete(kubectl)
+	o.Run()
+
+	plugins := strings.Split(output.String(), "\n")
+	for _, plugin := range uniquePluginsList(plugins) {
+		var cmds []*cobra.Command
+
+		// Plugins are named "kubectl-<name>" or with more - such as
+		// "kubectl-<name>-<subcmd1>..."
+		for i, cmdName := range strings.Split(plugin, "-")[1:] {
+			// Underscores (_) in plugin's filename are replaced with dashes(-)
+			// e.g. kubectl-foo_bar -> kubectl foo-bar
+			cmdName = strings.Replace(cmdName, "_", "-", -1)
+			cmds = append(cmds, &cobra.Command{
+				Use: cmdName,
+				// A Run is required for it to be a valid command
+				Run: func(cmd *cobra.Command, args []string) {},
+			})
+			if i > 0 {
+				cmds[i-1].AddCommand(cmds[i])
+			}
+		}
+		kubectl.AddCommand(cmds[0])
+	}
+}
+
+// uniquePluginsList deduplicates a given slice of strings
+func uniquePluginsList(plugins []string) []string {
+	seen := map[string]bool{}
+	newPlugins := []string{}
+	for _, p := range plugins {
+		if p == "" {
+			continue
+		}
+
+		if seen[p] {
+			continue
+		}
+		seen[p] = true
+		newPlugins = append(newPlugins, p)
+	}
+	return newPlugins
 }
