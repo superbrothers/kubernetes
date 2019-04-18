@@ -337,24 +337,31 @@ func addPluginCommands(kubectl *cobra.Command) {
 
 	plugins := strings.Split(output.String(), "\n")
 	for _, plugin := range uniquePluginsList(plugins) {
-		var cmds []*cobra.Command
+		args := []string{}
 
 		// Plugins are named "kubectl-<name>" or with more - such as
 		// "kubectl-<name>-<subcmd1>..."
-		for i, cmdName := range strings.Split(plugin, "-")[1:] {
+		for _, arg := range strings.Split(plugin, "-")[1:] {
 			// Underscores (_) in plugin's filename are replaced with dashes(-)
-			// e.g. kubectl-foo_bar -> kubectl foo-bar
-			cmdName = strings.Replace(cmdName, "_", "-", -1)
-			cmds = append(cmds, &cobra.Command{
-				Use: cmdName,
+			// e.g. foo_bar -> foo-bar
+			args = append(args, strings.Replace(arg, "_", "-", -1))
+		}
+
+		// Find the lowest command given args from the root command
+		parentCmd, remainingArgs, _ := kubectl.Find(args)
+		if parentCmd == nil {
+			parentCmd = kubectl
+		}
+
+		for _, remainingArg := range remainingArgs {
+			cmd := &cobra.Command{
+				Use: remainingArg,
 				// A Run is required for it to be a valid command
 				Run: func(cmd *cobra.Command, args []string) {},
-			})
-			if i > 0 {
-				cmds[i-1].AddCommand(cmds[i])
 			}
+			parentCmd.AddCommand(cmd)
+			parentCmd = cmd
 		}
-		kubectl.AddCommand(cmds[0])
 	}
 }
 
