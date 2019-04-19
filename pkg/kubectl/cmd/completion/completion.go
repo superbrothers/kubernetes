@@ -335,8 +335,8 @@ func addPluginCommands(kubectl *cobra.Command) {
 	o.Complete(kubectl)
 	o.Run()
 
-	plugins := strings.Split(output.String(), "\n")
-	for _, plugin := range uniquePluginsList(plugins) {
+	plugins := strings.Split(strings.TrimSuffix(output.String(), "\n"), "\n")
+	for _, plugin := range plugins {
 		args := []string{}
 
 		// Plugins are named "kubectl-<name>" or with more - such as
@@ -347,7 +347,8 @@ func addPluginCommands(kubectl *cobra.Command) {
 			args = append(args, strings.Replace(arg, "_", "-", -1))
 		}
 
-		// Find the lowest command given args from the root command
+		// In order to avoid that the same plugin command is added,
+		// find the lowest command given args from the root command
 		parentCmd, remainingArgs, _ := kubectl.Find(args)
 		if parentCmd == nil {
 			parentCmd = kubectl
@@ -363,22 +364,4 @@ func addPluginCommands(kubectl *cobra.Command) {
 			parentCmd = cmd
 		}
 	}
-}
-
-// uniquePluginsList deduplicates a given slice of strings
-func uniquePluginsList(plugins []string) []string {
-	seen := map[string]bool{}
-	newPlugins := []string{}
-	for _, p := range plugins {
-		if p == "" {
-			continue
-		}
-
-		if seen[p] {
-			continue
-		}
-		seen[p] = true
-		newPlugins = append(newPlugins, p)
-	}
-	return newPlugins
 }
