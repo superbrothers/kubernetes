@@ -696,32 +696,44 @@ func (o *GetOptions) watch(f cmdutil.Factory, cmd *cobra.Command, args []string)
 		*outputObjects = false
 	}
 
-	// print watched changes
-	w, err := r.Watch(rv)
-	if err != nil {
-		return err
-	}
+	for {
+		// print watched changes
+		w, err := r.Watch(rv)
+		if err != nil {
+			return err
+		}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	intr := interrupt.New(nil, cancel)
-	intr.Run(func() error {
-		_, err := watchtools.UntilWithoutRetry(ctx, w, func(e watch.Event) (bool, error) {
-			objToPrint := e.Object
-			if o.OutputWatchEvents {
-				objToPrint = &metav1.WatchEvent{Type: string(e.Type), Object: runtime.RawExtension{Object: objToPrint}}
-			}
-			if err := printer.PrintObj(objToPrint, writer); err != nil {
-				return false, err
-			}
-			writer.Flush()
-			// after processing at least one event, start outputting objects
-			*outputObjects = true
-			return false, nil
+		ctx, cancel := context.WithCancel(context.Background())
+		intr := interrupt.New(nil, cancel)
+		err = intr.Run(func() error {
+			_, err := watchtools.UntilWithoutRetry(ctx, w, func(e watch.Event) (bool, error) {
+				rv, err = meta.NewAccessor().ResourceVersion(e.Object)
+				if err != nil {
+					return false, err
+				}
+
+				objToPrint := e.Object
+				if o.OutputWatchEvents {
+					objToPrint = &metav1.WatchEvent{Type: string(e.Type), Object: runtime.RawExtension{Object: objToPrint}}
+				}
+				if err := printer.PrintObj(objToPrint, writer); err != nil {
+					return false, err
+				}
+				writer.Flush()
+				// after processing at least one event, start outputting objects
+				*outputObjects = true
+				return false, nil
+			})
+			return err
 		})
-		return err
-	})
-	return nil
+		cancel()
+		switch {
+		case err == watchtools.ErrWatchClosed:
+			continue
+		default:
+			return err
+		}
+	}
 }
 
 func (o *GetOptions) printGeneric(r *resource.Result) error {
